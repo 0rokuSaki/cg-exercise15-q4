@@ -1,6 +1,10 @@
 /*****************************************************************//**
  * \file   main.cpp
  * \brief  My solution for Q4 in exersice ('Maman') 15 in Computer Graphics (20562) course.
+ * 
+ * This program displays a rotating polyhedron.
+ * Press on keys 1-5 to switch between the different polyhedrons.
+ * Press on keys p and o to switch between orthographic and perspective projections.
  *
  * Repo link: https://github.com/0rokuSaki/cg-exercise15-q4
  *
@@ -17,10 +21,16 @@
 #include <GL/glut.h>
 
 #include <iostream>
-#include <string>
 #include <vector>
+#include <cmath>
 
 #include "Constants.h"
+
+
+EPolyhedronType currentPolyhedron = TETRAHEDRON;
+EProjectionType currentProjection = ORTHOGRAPHIC;
+GLdouble       currentRotationAngle = 0.0;
+GLdouble       aspectRatio;
 
 
  /* Creates and initializes GLUT display-window. */
@@ -38,14 +48,108 @@ void createWindow(int argc, char** argv)
 }
 
 
+void displayPolyhedron(EPolyhedronType polyhedron)
+{
+    currentPolyhedron = polyhedron;
+
+    glLineWidth(LINE_WIDTH);
+
+    switch (polyhedron)
+    {
+    case TETRAHEDRON:
+        glutWireTetrahedron();
+        break;
+    case CUBE:
+        glutWireCube(CUBE_SIZE);
+        break;
+    case OCTAHEDRON:
+        glutWireOctahedron();
+        break;
+    case DODECAHEDRON:
+        glutWireDodecahedron();
+        break;
+    case ICOSAHEDRON:
+        glutWireIcosahedron();
+        break;
+    default:
+        break;
+    }
+}
+
+
+void updateProjection(EProjectionType projection)
+{
+    currentProjection = projection;
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    switch (projection)
+    {
+    case ORTHOGRAPHIC:
+        glOrtho(ORTHOGRAPHIC_COORD);
+        glColor3d(GREEN);
+        break;
+    case PERSPECTIVE:
+        gluPerspective(PERSPECTIVE_COORD);
+        glColor3d(BLUE);
+        break;
+    default:
+        break;
+    }
+
+    glutPostRedisplay();
+}
+
+
 /* Callback for 'glutDisplayFunc' */
 void displayCallback(void)
 {
-    glLoadIdentity();
-    glMatrixMode(GL_PROJECTION);
-    gluOrtho2D(WORLD_COORD);
+    aspectRatio = ((GLdouble)glutGet(GLUT_SCREEN_WIDTH)) / glutGet(GLUT_SCREEN_HEIGHT);
 
     glClear(GL_COLOR_BUFFER_BIT);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glTranslated(TRANSLATION_PARAMS);
+    glScaled(SCALING_PARAMS);
+    glRotated(ROTATION_PARAMS);
+    glRotated(currentRotationAngle, 0.0, 1.0, 0.0);
+
+    updateProjection(currentProjection);
+
+    displayPolyhedron(currentPolyhedron);
+
+    glFlush();
+    glutSwapBuffers();
+}
+
+
+void keyboardCallback(unsigned char key, int x, int y)
+{
+    if (FIRST_OF_POLYHEDRON_TYPE < key && key < LAST_OF_POLYHEDRON_TYPE)
+    {
+        displayPolyhedron((EPolyhedronType) key);
+    }
+    else if (tolower(key) == ORTHOGRAPHIC || tolower(key) == PERSPECTIVE)
+    {
+        updateProjection((EProjectionType) tolower(key));
+    }
+    else
+    {
+        // A different button was pressed; do nothing
+    }
+}
+
+
+void timerCallback(int value)
+{
+    currentRotationAngle += 1.0;
+    if (currentRotationAngle > MAX_ROTATION_ANGLE)
+    {
+        currentRotationAngle = 0.0;
+    }
+    glutPostRedisplay();
+    glutTimerFunc(1000 / REFRESH_RATE_FPS, timerCallback, value);
 }
 
 
@@ -53,6 +157,8 @@ void displayCallback(void)
 void registerCallbacks(void)
 {
     glutDisplayFunc(displayCallback);
+    glutKeyboardFunc(keyboardCallback);
+    glutTimerFunc(100, timerCallback, 0);
 }
 
 
